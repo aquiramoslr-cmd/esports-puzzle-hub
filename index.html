@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Esports Puzzle Hub</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle at top, #1e293b 0, #020617 60%);
+    color: #e5e7eb;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+  }
+  header {
+    padding: 16px;
+    background: rgba(15,23,42,0.9);
+    border-bottom: 2px solid #f59e0b;
+  }
+  h1 {
+    margin: 0;
+    font-size: 26px;
+    letter-spacing: 1px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #9ca3af;
+  }
+
+  #hub {
+    padding: 12px;
+  }
+
+  .panel {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: rgba(15,23,42,0.85);
+    border-radius: 10px;
+    border: 1px solid #334155;
+    padding: 12px;
+  }
+
+  #top-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  button, select {
+    background: #f59e0b;
+    border: none;
+    color: #0f172a;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 13px;
+  }
+  button:hover, select:hover {
+    background: #fbbf24;
+  }
+  select {
+    color: #0f172a;
+  }
+
+  .stat {
+    font-size: 13px;
+    margin: 0 6px;
+  }
+
+  #puzzle-container {
+    margin: 10px auto;
+    display: inline-block;
+    border: 4px solid #f59e0b;
+    box-sizing: border-box;
+    max-width: 100%;
+    background: #020617;
+  }
+
+  canvas {
+    cursor: pointer;
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  #start-overlay, #leaderboard-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  .overlay-card {
+    background: #020617;
+    border-radius: 10px;
+    border: 1px solid #f59e0b;
+    padding: 20px;
+    max-width: 400px;
+    color: #e5e7eb;
+  }
+  .overlay-card h2 {
+    margin-top: 0;
+  }
+  .overlay-card button {
+    margin-top: 8px;
+  }
+  .overlay-row {
+    margin: 8px 0;
+  }
+
+  #leaderboard-list {
+    text-align: left;
+    font-size: 13px;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 8px;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 10px; }
+    h1 { font-size: 20px; }
+    .panel { padding: 8px; }
+    #top-bar { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Esports Puzzle Hub</h1>
+  <div class="subtitle">Swap Puzzle • Sliding 15‑Puzzle • Leaderboard • Difficulty Modes</div>
+</header>
+
+<div id="hub">
+  <div class="panel">
+    <div id="top-bar">
+      <select id="modeSelect">
+        <option value="swap">Mode: Swap Puzzle</option>
+        <option value="slide">Mode: Sliding 15‑Puzzle</option>
+      </select>
+
+      <select id="difficultySelect">
+        <option value="easy">Difficulty: Easy</option>
+        <option value="normal" selected>Difficulty: Normal</option>
+        <option value="hard">Difficulty: Hard</option>
+      </select>
+
+      <select id="imageSelect">
+        <option value="mountain">Image: Mountain</option>
+        <option value="city">Image: City</option>
+        <option value="abstract">Image: Abstract</option>
+      </select>
+
+      <button id="shuffleBtn">Shuffle</button>
+      <button id="resetBtn">Reset</button>
+      <button id="leaderboardBtn">Leaderboard</button>
+
+      <span class="stat">Moves: <span id="moveCount">0</span></span>
+      <span class="stat">Time: <span id="timer">00:00</span></span>
+    </div>
+
+    <div id="puzzle-container">
+      <canvas id="puzzleCanvas" width="800" height="450"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Start Screen -->
+<div id="start-overlay">
+  <div class="overlay-card">
+    <h2>Welcome to Esports Puzzle Hub</h2>
+    <p>Choose a mode and difficulty, then press <strong>Start Game</strong>.</p>
+    <div class="overlay-row">
+      <label>Mode:</label>
+      <select id="startMode">
+        <option value="swap">Swap Puzzle</option>
+        <option value="slide">Sliding 15‑Puzzle</option>
+      </select>
+    </div>
+    <div class="overlay-row">
+      <label>Difficulty:</label>
+      <select id="startDifficulty">
+        <option value="easy">Easy</option>
+        <option value="normal" selected>Normal</option>
+        <option value="hard">Hard</option>
+      </select>
+    </div>
+    <div class="overlay-row">
+      <label>Image:</label>
+      <select id="startImage">
+        <option value="mountain">Mountain</option>
+        <option value="city">City</option>
+        <option value="abstract">Abstract</option>
+      </select>
+    </div>
+    <button id="startGameBtn">Start Game</button>
+  </div>
+</div>
+
+<!-- Leaderboard -->
+<div id="leaderboard-overlay" style="display:none;">
+  <div class="overlay-card">
+    <h2>Leaderboard</h2>
+    <p>Best times per mode & difficulty.</p>
+    <div id="leaderboard-list"></div>
+    <button id="closeLeaderboardBtn">Close</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('puzzleCanvas');
+const ctx = canvas.getContext('2d');
+
+const modeSelect = document.getElementById('modeSelect');
+const difficultySelect = document.getElementById('difficultySelect');
+const imageSelect = document.getElementById('imageSelect');
+const shuffleBtn = document.getElementById('shuffleBtn');
+const resetBtn = document.getElementById('resetBtn');
+const leaderboardBtn = document.getElementById('leaderboardBtn');
+
+const moveCountEl = document.getElementById('moveCount');
+const timerEl = document.getElementById('timer');
+
+const startOverlay = document.getElementById('start-overlay');
+const startMode = document.getElementById('startMode');
+const startDifficulty = document.getElementById('startDifficulty');
+const startImage = document.getElementById('startImage');
+const startGameBtn = document.getElementById('startGameBtn');
+
+const leaderboardOverlay = document.getElementById('leaderboard-overlay');
+const leaderboardList = document.getElementById('leaderboard-list');
+const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
+
+// Game state
+let currentMode = 'swap'; // 'swap' or 'slide'
+let currentDifficulty = 'normal'; // easy, normal, hard
+let currentImageKey = 'mountain';
+
+let ROWS = 4;
+let COLS = 6;
+let pieceWidth, pieceHeight;
+let pieces = [];
+let selectedPiece = null;
+let draggingPiece = null;
+let dragOverPiece = null;
+
+// Sliding puzzle blank tile
+let blankPiece = null;
+
+// Timer & moves
+let moveCount = 0;
+let elapsedSeconds = 0;
+let timerInterval = null;
+let gameStarted = false;
+
+// Sounds (plug in your own files if you want)
+const sounds = {
+  swap: null,   // new Audio('swap.mp3');
+  win: null     // new Audio('win.mp3');
+};
+
+// Images
+const img = new Image();
+img.crossOrigin = 'anonymous';
+
+function getImageSrc(key) {
+  if (key === 'mountain') {
+    return 'https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg';
+  } else if (key === 'city') {
+    return 'https://upload.wikimedia.org/wikipedia/commons/5/5f/NYC_Midtown_Skyline_at_night_%28HDR%29.jpg';
+  } else {
+    return 'https://upload.wikimedia.org/wikipedia/commons/3/3c/Abstract_-_Complexity.jpg';
+  }
+}
+
+// Difficulty settings
+function applyDifficulty(mode, diff) {
+  if (mode === 'swap') {
+    if (diff === 'easy') { ROWS = 3; COLS = 4; }
+    else if (diff === 'normal') { ROWS = 4; COLS = 6; }
+    else { ROWS = 5; COLS = 8; }
+  } else { // slide mode: classic 15-puzzle style
+    ROWS = 4;
+    COLS = 4;
+  }
+  pieceWidth = canvas.width / COLS;
+  pieceHeight = canvas.height / ROWS;
+}
+
+// Init puzzle pieces
+function initPieces() {
+  pieces = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      pieces.push({
+        origRow: r,
+        origCol: c,
+        row: r,
+        col: c,
+        isBlank: false
+      });
+    }
+  }
+  if (currentMode === 'slide') {
+    // last tile is blank
+    blankPiece = pieces[pieces.length - 1];
+    blankPiece.isBlank = true;
+  } else {
+    blankPiece = null;
+  }
+}
+
+// Shuffle
+function shufflePieces() {
+  if (currentMode === 'swap') {
+    for (let i = pieces.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      let tempRow = pieces[i].row;
+      let tempCol = pieces[i].col;
+      pieces[i].row = pieces[j].row;
+      pieces[i].col = pieces[j].col;
+      pieces[j].row = tempRow;
+      pieces[j].col = tempCol;
+    }
+  } else {
+    // sliding puzzle: random valid moves from solved state
+    for (let k = 0; k < 200; k++) {
+      const neighbors = getBlankNeighbors();
+      const choice = neighbors[Math.floor(Math.random() * neighbors.length)];
+      slidePiece(choice);
+    }
+  }
+  resetStats();
+  drawPuzzle();
+}
+
+function resetStats() {
+  moveCount = 0;
+  elapsedSeconds = 0;
+  updateMoveCount();
+  updateTimerDisplay();
+  stopTimer();
+  gameStarted = false;
+}
+
+// Timer
+function startTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(() => {
+    elapsedSeconds++;
+    updateTimerDisplay();
+  }, 1000);
+}
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
+function updateTimerDisplay() {
+  const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+  const seconds = String(elapsedSeconds % 60).padStart(2, '0');
+  timerEl.textContent = `${minutes}:${seconds}`;
+}
+function updateMoveCount() {
+  moveCountEl.textContent = moveCount;
+}
+
+// Drawing
+function drawPuzzle() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  pieces.forEach(p => {
+    const dx = p.col * pieceWidth;
+    const dy = p.row * pieceHeight;
+
+    if (!p.isBlank) {
+      const sx = p.origCol * (img.width / COLS);
+      const sy = p.origRow * (img.height / ROWS);
+      const sw = img.width / COLS;
+      const sh = img.height / ROWS;
+      ctx.drawImage(img, sx, sy, sw, sh, dx, dy, pieceWidth, pieceHeight);
+    } else {
+      // blank tile
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(dx, dy, pieceWidth, pieceHeight);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(dx + 4, dy + 4, pieceWidth - 8, pieceHeight - 8);
+    }
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(dx, dy, pieceWidth, pieceHeight);
+
+    if (selectedPiece === p || draggingPiece === p) {
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(dx + 2, dy + 2, pieceWidth - 4, pieceHeight - 4);
+    } else if (dragOverPiece === p) {
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(dx + 2, dy + 2, pieceWidth - 4, pieceHeight - 4);
+    }
+  });
+}
+
+// Helpers
+function getPieceAtPosition(x, y) {
+  const col = Math.floor(x / pieceWidth);
+  const row = Math.floor(y / pieceHeight);
+  return pieces.find(p => p.row === row && p.col === col);
+}
+
+function getCanvasCoords(e) {
+  const rect = canvas.getBoundingClientRect();
+  let clientX, clientY;
+  if (e.touches && e.touches.length > 0) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  const x = (clientX - rect.left) * (canvas.width / rect.width);
+  const y = (clientY - rect.top) * (canvas.height / rect.height);
+  return { x, y };
+}
+
+// Swap mode
+function swapPieces(p1, p2) {
+  if (!p1 || !p2 || p1 === p2) return;
+  const tempRow = p1.row;
+  const tempCol = p1.col;
+  p1.row = p2.row;
+  p1.col = p2.col;
+  p2.row = tempRow;
+  p2.col = tempCol;
+
+  moveCount++;
+  updateMoveCount();
+  if (!gameStarted) {
+    gameStarted = true;
+    startTimer();
+  }
+  if (sounds.swap) sounds.swap.play();
+  drawPuzzle();
+  checkWin();
+}
+
+// Sliding mode
+function areNeighbors(p, blank) {
+  const dr = Math.abs(p.row - blank.row);
+  const dc = Math.abs(p.col - blank.col);
+  return (dr + dc === 1);
+}
+function slidePiece(p) {
+  if (!blankPiece || !p || !areNeighbors(p, blankPiece)) return;
+  const tempRow = p.row;
+  const tempCol = p.col;
+  p.row = blankPiece.row;
+  p.col = blankPiece.col;
+  blankPiece.row = tempRow;
+  blankPiece.col = tempCol;
+}
+function getBlankNeighbors() {
+  return pieces.filter(p => areNeighbors(p, blankPiece));
+}
+function slideMove(p) {
+  if (!blankPiece || !p || !areNeighbors(p, blankPiece)) return;
+  slidePiece(p);
+  moveCount++;
+  updateMoveCount();
+  if (!gameStarted) {
+    gameStarted = true;
+    startTimer();
+  }
+  if (sounds.swap) sounds.swap.play();
+  drawPuzzle();
+  checkWin();
+}
+
+// Win check
+function checkWin() {
+  const win = pieces.every(p => p.row === p.origRow && p.col === p.origCol);
+  if (win) {
+    stopTimer();
+    if (sounds.win) sounds.win.play();
+    saveLeaderboardEntry();
+    setTimeout(() => {
+      alert(`GG! You solved the puzzle!\nMode: ${currentMode}\nDifficulty: ${currentDifficulty}\nMoves: ${moveCount}\nTime: ${timerEl.textContent}`);
+    }, 100);
+  }
+}
+
+// Leaderboard
+function getLeaderboardKey() {
+  return 'esportsPuzzleLeaderboard';
+}
+function loadLeaderboard() {
+  const raw = localStorage.getItem(getLeaderboardKey());
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+function saveLeaderboard(list) {
+  localStorage.setItem(getLeaderboardKey(), JSON.stringify(list));
+}
+function saveLeaderboardEntry() {
+  const list = loadLeaderboard();
+  list.push({
+    mode: currentMode,
+    difficulty: currentDifficulty,
+    image: currentImageKey,
+    moves: moveCount,
+    seconds: elapsedSeconds,
+    timestamp: Date.now()
+  });
+  // sort by time ascending
+  list.sort((a, b) => a.seconds - b.seconds);
+  // keep top 20
+  saveLeaderboard(list.slice(0, 20));
+}
+function showLeaderboard() {
+  const list = loadLeaderboard();
+  if (!list.length) {
+    leaderboardList.innerHTML = '<p>No records yet. Finish a puzzle to enter the leaderboard!</p>';
+  } else {
+    let html = '<ul>';
+    list.forEach((entry, idx) => {
+      const minutes = String(Math.floor(entry.seconds / 60)).padStart(2, '0');
+      const seconds = String(entry.seconds % 60).padStart(2, '0');
+      html += `<li>#${idx+1} — Mode: ${entry.mode}, Diff: ${entry.difficulty}, Img: ${entry.image}, Time: ${minutes}:${seconds}, Moves: ${entry.moves}</li>`;
+    });
+    html += '</ul>';
+    leaderboardList.innerHTML = html;
+  }
+  leaderboardOverlay.style.display = 'flex';
+}
+
+// Events
+modeSelect.addEventListener('change', () => {
+  currentMode = modeSelect.value;
+  applyDifficulty(currentMode, currentDifficulty);
+  initPieces();
+  resetStats();
+  drawPuzzle();
+});
+
+difficultySelect.addEventListener('change', () => {
+  currentDifficulty = difficultySelect.value;
+  applyDifficulty(currentMode, currentDifficulty);
+  initPieces();
+  resetStats();
+  drawPuzzle();
+});
+
+imageSelect.addEventListener('change', () => {
+  currentImageKey = imageSelect.value;
+  img.src = getImageSrc(currentImageKey);
+});
+
+shuffleBtn.addEventListener('click', () => {
+  shufflePieces();
+});
+
+resetBtn.addEventListener('click', () => {
+  initPieces();
+  resetStats();
+  drawPuzzle();
+});
+
+leaderboardBtn.addEventListener('click', () => {
+  showLeaderboard();
+});
+
+closeLeaderboardBtn.addEventListener('click', () => {
+  leaderboardOverlay.style.display = 'none';
+});
+
+// Mouse / touch interactions
+canvas.addEventListener('click', (e) => {
+  const { x, y } = getCanvasCoords(e);
+  const clicked = getPieceAtPosition(x, y);
+  if (!clicked) return;
+
+  if (currentMode === 'swap') {
+    if (!selectedPiece) {
+      selectedPiece = clicked;
+    } else {
+      const prev = selectedPiece;
+      selectedPiece = null;
+      swapPieces(prev, clicked);
+    }
+    drawPuzzle();
+  } else {
+    // slide mode: click to move into blank if neighbor
+    slideMove(clicked);
+  }
+});
+
+canvas.addEventListener('mousedown', (e) => {
+  if (currentMode !== 'swap') return;
+  const { x, y } = getCanvasCoords(e);
+  draggingPiece = getPieceAtPosition(x, y);
+  dragOverPiece = null;
+  drawPuzzle();
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (currentMode !== 'swap') return;
+  if (!draggingPiece) return;
+  const { x, y } = getCanvasCoords(e);
+  dragOverPiece = getPieceAtPosition(x, y);
+  drawPuzzle();
+});
+
+canvas.addEventListener('mouseup', () => {
+  if (currentMode !== 'swap') return;
+  if (draggingPiece && dragOverPiece) {
+    swapPieces(draggingPiece, dragOverPiece);
+  }
+  draggingPiece = null;
+  dragOverPiece = null;
+  drawPuzzle();
+});
+
+// Touch for mobile
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const { x, y } = getCanvasCoords(e);
+  const clicked = getPieceAtPosition(x, y);
+  if (currentMode === 'swap') {
+    draggingPiece = clicked;
+    dragOverPiece = null;
+    drawPuzzle();
+  } else {
+    slideMove(clicked);
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (currentMode !== 'swap') return;
+  if (!draggingPiece) return;
+  const { x, y } = getCanvasCoords(e);
+  dragOverPiece = getPieceAtPosition(x, y);
+  drawPuzzle();
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  if (currentMode !== 'swap') return;
+  if (draggingPiece && dragOverPiece) {
+    swapPieces(draggingPiece, dragOverPiece);
+  }
+  draggingPiece = null;
+  dragOverPiece = null;
+  drawPuzzle();
+}, { passive: false });
+
+// Start overlay
+startGameBtn.addEventListener('click', () => {
+  currentMode = startMode.value;
+  currentDifficulty = startDifficulty.value;
+  currentImageKey = startImage.value;
+
+  modeSelect.value = currentMode;
+  difficultySelect.value = currentDifficulty;
+  imageSelect.value = currentImageKey;
+
+  img.src = getImageSrc(currentImageKey);
+  img.onload = () => {
+    applyDifficulty(currentMode, currentDifficulty);
+    initPieces();
+    resetStats();
+    drawPuzzle();
+  };
+  startOverlay.style.display = 'none';
+});
+
+// Initial image load
+img.src = getImageSrc(currentImageKey);
+img.onload = () => {
+  applyDifficulty(currentMode, currentDifficulty);
+  initPieces();
+  resetStats();
+  drawPuzzle();
+};
+</script>
+
+</body>
+</html>
